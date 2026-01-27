@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  # 1. Base de Datos (MySQL)
+  db:
+    image: mysql:5.7
+    restart: always
+    environment:
+      MYSQL_DATABASE: 'db'
+      MYSQL_USER: 'user'         # Usuario normal
+      MYSQL_PASSWORD: 'password' # Contraseña usuario normal
+      MYSQL_ROOT_PASSWORD: 'password' # Contraseña de Root
+    # Sin puertos expuestos al exterior, solo internos.
+
+  # 2. Backend (Java Spring Boot)
+  backend:
+    build: ./backend
+    restart: always
+    depends_on:
+      - db
+    environment:
+      # Forzamos la configuración aquí para asegurar que conecta
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/db?allowPublicKeyRetrieval=true&useSSL=false
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: password
+
+  # 3. Frontend (React)
+  frontend:
+    build: ./frontend
+    restart: always
+    stdin_open: true
+
+  # 4. Proxy (Nginx - Tu tarea)
+  proxy:
+    image: nginx:latest
+    volumes:
+      - ./proxy/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - backend
+    ports:
+      - "80:80"  # Único puerto abierto al mundo
