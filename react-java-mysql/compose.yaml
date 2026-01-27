@@ -1,42 +1,58 @@
-version: '3.8'
-
 services:
-  # 1. Base de Datos (MySQL)
-  db:
-    image: mysql:5.7
-    restart: always
-    environment:
-      MYSQL_DATABASE: 'db'
-      MYSQL_USER: 'user'         # Usuario normal
-      MYSQL_PASSWORD: 'password' # Contraseña usuario normal
-      MYSQL_ROOT_PASSWORD: 'password' # Contraseña de Root
-    # Sin puertos expuestos al exterior, solo internos.
-
-  # 2. Backend (Java Spring Boot)
   backend:
-    build: ./backend
+    build: backend
     restart: always
-    depends_on:
-      - db
+    secrets:
+      - db-password
     environment:
-      # Forzamos la configuración aquí para asegurar que conecta
-      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/db?allowPublicKeyRetrieval=true&useSSL=false
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: password
-
-  # 3. Frontend (React)
-  frontend:
-    build: ./frontend
-    restart: always
-    stdin_open: true
-
-  # 4. Proxy (Nginx - Tu tarea)
-  proxy:
-    image: nginx:latest
-    volumes:
-      - ./proxy/nginx.conf:/etc/nginx/nginx.conf:ro
+      MYSQL_HOST: db
+    networks:
+      - react-spring
+      - spring-mysql
     depends_on:
-      - frontend
-      - backend
+      db:
+        condition: service_healthy
+  db:
+    # We use a mariadb image which supports both amd64 & arm64 architecture
+    image: mariadb:10.6.4-focal
+    # If you really want to use MySQL, uncomment the following line
+    #image: mysql:8.0.19
+    environment:
+      - MYSQL_DATABASE=example
+      - MYSQL_ROOT_PASSWORD_FILE=/run/secrets/db-password
+    restart: always
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "--silent"]
+      interval: 3s
+      retries: 5
+      start_period: 30s
+    secrets:
+      - db-password
+    volumes:
+      - db-data:/var/lib/mysql
+    networks:
+      - spring-mysql
+  frontend:
+    build:
+      context: frontend
+      target: development
     ports:
-      - "80:80"  # Único puerto abierto al mundo
+      - 3000:3000
+    volumes:
+      - ./frontend/src:/code/src
+      - /project/node_modules
+    networks:
+      - react-spring
+    depends_on:
+      - backend
+    expose:
+      - 3306
+      - 33060
+volumes:
+  db-data: {}
+secrets:
+  db-password:
+    file: db/password.txt
+networks:
+  react-spring: {}
+  spring-mysql: {}
