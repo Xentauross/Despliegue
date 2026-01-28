@@ -5,7 +5,7 @@ services:
     restart: always
     environment:
       - MYSQL_HOST=db
-      - MYSQL_PASSWORD=password_segura
+      - MYSQL_PASSWORD=usuario
     networks:
       - react-spring
       - spring-mysql
