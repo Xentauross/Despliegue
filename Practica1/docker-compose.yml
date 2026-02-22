@@ -8,6 +8,7 @@ services:
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d
       - ./.htpasswd:/etc/nginx/.htpasswd
+      - ./nginx/certs:/etc/nginx/certs      # ← LÍNEA NUEVA (certificados SSL)
     networks:
       - backend_net
     depends_on:
